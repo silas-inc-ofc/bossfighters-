@@ -4,6 +4,7 @@ A Python-based fighting game featuring multiple characters and boss battles.
 
 ## Version
 v0.1.8
+the game is still in alpha and some features are boroken.
 
 ## Features
 - Multiple playable characters (Archer, Axe, Knight, Druid, and more)

@@ -11,7 +11,7 @@ pygame.display.set_caption("Bossfighters v0.1.8")
 FPS = 40
 clock = pygame.Clock()
 characters_list = ['knight','archer','axe','druid','potion_zaku','emerald_zaku_young','emerald_zaku_old','combustighoul','velocighoul',
-                   'diamond_zaku','chars','gouf','bobbins','gogg']
+                   'diamond_zaku','chars','gouf','bobbins','gogg','guardian']
 in_game_character_list = []
 turns =[characters_list[0],characters_list[1],characters_list[2],characters_list[3],characters_list[4]]
 turn = turns[0]
@@ -31,6 +31,7 @@ characters_attacks = {
     characters_list[11]:1,
     characters_list[12]:1,
     characters_list[13]:1,
+    characters_list[14]:2,
 }
 
 characters_speed = {
@@ -48,6 +49,7 @@ characters_speed = {
     characters_list[11]:2.8,
     characters_list[12]:2.95,
     characters_list[13]:3.2,
+    characters_list[14]:3.85,
 }
 
 characters_health = {
@@ -65,6 +67,8 @@ characters_health = {
     characters_list[11]:440,
     characters_list[12]:100,
     characters_list[13]:400,
+    characters_list[14]:214,
+    
     
     
 }
@@ -84,9 +88,17 @@ characteres_attacks_stats = {
     characters_list[11]:['melee'],
     characters_list[12]:['heal'],
     characters_list[13]:['melee'],
+    characters_list[14]:['melee','melee'],
     
     
     
+}
+
+
+characters_beam_damage = {
+    characters_list[5]:5,
+    characters_list[6]:3.5,
+    characters_list[9]:4.5,
 }
 
 characters_projectile_delays = {
@@ -114,6 +126,7 @@ characters_damage = {
     characters_list[11]:(130,),
     characters_list[12]:(0,),
     characters_list[13]:(140,),
+    characters_list[14]:(200,450),
 }
 characters_heal_stats = {
     
@@ -131,6 +144,7 @@ characters_heal_stats = {
     characters_list[11]:[False],
     characters_list[12]:['multi'],
     characters_list[13]:[False],
+    characters_list[14]:[False,False],
     
 }
 characters_heal_amounts = {
@@ -314,7 +328,14 @@ class Character(pygame.sprite.Sprite):
                 repetition = 3
                 self.pending_projectiles = [(projectile_dx if not self.flip else -projectile_dx, projectile_dy, self.identity, index) for _ in range(repetition)]
                 self.last_projectile_time = pygame.time.get_ticks()
+        elif self.attack_type == 'beam':
+            beam = Player_beam(self.rect.x,self.rect.y,self.identity,self,self.flip)
+            player_beams.add(beam)
+            
         healthlist = []
+        
+        
+            
    
         if characters_heal_stats.get(self.identity)[attack_no-1] == 'single':
             for c in in_game_character_list:
@@ -725,12 +746,42 @@ class Projectile(pygame.sprite.Sprite):
         self.rect.y += self.dy
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH or self.rect.bottom < 0 or self.rect.top > SCREEN_HEIGHT:
             self.kill()
-        
+    
+    
+class Player_beam(pygame.sprite.Sprite):
+    def __init__(self,x,y,character,parent,flip):
+        super().__init__()
+        self.character = character
+        self.parent = parent
+        self.flip = flip
+        self.image = pygame.image.load(f'images/player_beams/{self.character} beam.png').convert_alpha()
+        if character == 'emerald_zaku_young':
+            self.image = pygame.transform.scale(self.image,(self.image.get_width()*3,self.image.get_height()*0.3))
+        if character == 'emerald_zaku_old':
+            self.image = pygame.transform.scale(self.image,(self.image.get_width()*3,self.image.get_height()*0.7))
+        if character == 'diamond_zaku':
+            self.image = pygame.transform.scale(self.image,(self.image.get_width()*3,self.image.get_height()*0.5))
+        if self.flip == False:
+            pass
+        else:
+            self.image = pygame.transform.flip(self.image,True,False)
+        self.frect = self.image.get_frect(center = (x,y))
+        self.rect = self.frect   
+    def draw(self):
+        screen.blit(self.image,self.rect)
+    def update(self):
+        if self.parent.flip == True:
+            
+            self.rect.topright = (self.parent.rect.topright[0] - 70, self.parent.rect.topright[1])
+        else:
+            self.rect.topleft = (self.parent.rect.topleft[0] + 70, self.parent.rect.topleft[1])
+        if not self.parent.attacking:
+            self.kill()
 characters = pygame.sprite.Group()
 bosses = pygame.sprite.Group()
 projectiles = pygame.sprite.Group()
 player_projectiles = pygame.sprite.Group()
-
+player_beams = pygame.sprite.Group()
 boss_health_bars = []
 for i in range(5):
     
@@ -754,6 +805,9 @@ for b in bosses:
     
     bhb = HealthBar(SCREEN_WIDTH//2,200,bosses_health.get(b.identity),bosses_health.get(b.identity),(0,0,255))
     boss_health_bars.append(bhb)
+    
+
+
     
 
             
@@ -838,6 +892,11 @@ while running:
                 b.health -= character_projectile_damage.get(pp.character)
             pp.kill()
             
+    if pygame.sprite.groupcollide(player_beams,bosses,False,False):
+        for bm in pygame.sprite.groupcollide(player_beams,bosses,False,False):
+            for b in pygame.sprite.groupcollide(bosses,player_beams,False,False):
+                b.health -= characters_beam_damage.get(bm.character)
+            
     font = pygame.font.Font(None,36)
     small_font = pygame.font.Font(None,20)
     title = font.render('WELCOME TO BOSSFIGHTERS',False,pygame.Color('red'))
@@ -868,6 +927,8 @@ while running:
     if game_started == True:
         characters.update()
         bosses.update()
+        player_beams.update()
+        player_beams.draw(screen)
         for c in characters:
             c.move()
          
